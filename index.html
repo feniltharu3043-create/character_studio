@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Character LoRA Studio</title>
+<meta name="description" content="Plan a dataset, write captions, generate training settings and shoot realistic prompts for your own AI character. Free, offline, no account.">
+<style>
+  :root{
+    --bg:#0a0a0c; --panel:#131318; --panel2:#1b1b22; --line:#2a2a33;
+    --ink:#f2efe9; --dim:#a09c94; --dim2:#6f6b64;
+    --amber:#e9b26b; --green:#7dd6a1; --red:#e07b72; --blue:#8ab4f8;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding-bottom:40px;
+  }
+  a{color:var(--amber)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 16px}
+  header{padding:26px 0 14px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:600}
+  h1{font-size:26px;line-height:1.15;margin:6px 0 8px;letter-spacing:-.01em}
+  h1 span{color:var(--dim)}
+  .sub{color:var(--dim);font-size:14px;margin:0}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:14px 0 12px;position:sticky;top:0;background:linear-gradient(var(--bg) 72%,rgba(10,10,12,0));z-index:5;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  button{font:inherit;color:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);padding:9px 13px}
+  button:active{transform:translateY(1px)}
+  .tab{white-space:nowrap;border:1px solid var(--line);background:transparent;color:var(--dim);font-size:14px;padding:8px 13px}
+  .tab[aria-selected="true"]{background:var(--ink);color:#111;border-color:var(--ink);font-weight:600}
+  section{display:none;animation:f .18s ease}
+  section.on{display:block}
+  @keyframes f{from{opacity:.4}to{opacity:1}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:0 0 12px}
+  .card h2{font-size:16px;margin:0 0 8px;letter-spacing:-.01em}
+  .card h3{font-size:14px;margin:16px 0 6px;color:var(--amber);letter-spacing:.02em;text-transform:uppercase}
+  .card p{margin:0 0 10px;color:var(--dim);font-size:14.5px}
+  .card p:last-child{margin-bottom:0}
+  .card strong{color:var(--ink);font-weight:600}
+  ul.clean{margin:0 0 10px;padding-left:18px;color:var(--dim);font-size:14.5px}
+  ul.clean li{margin-bottom:6px}
+  ul.clean b{color:var(--ink);font-weight:600}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grid2{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .stat .k{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim2)}
+  .stat .v{font-size:15px;font-weight:600;margin-top:3px}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)}
+  label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim2);margin:10px 0 5px;font-weight:600}
+  input,textarea,select{
+    width:100%;font:inherit;font-size:15px;color:var(--ink);background:#0f0f13;
+    border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--amber)}
+  textarea{resize:vertical;min-height:76px;line-height:1.5}
+  .tiny{font-size:12.5px;color:var(--dim2);margin-top:6px}
+  .bar{height:9px;background:#0f0f13;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:6px 0 4px}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c98f47,var(--amber));transition:width .2s}
+  .progress-line{display:flex;justify-content:space-between;font-size:12.5px;color:var(--dim);margin-bottom:6px}
+  .group{margin:14px 0 0}
+  .group>h4{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin:0 0 8px;font-weight:700}
+  .shot{background:var(--panel2);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .shot.done{border-color:#2f4b3b;background:#111a15}
+  .shot .head{display:flex;gap:11px;align-items:flex-start;padding:11px 12px}
+  .shot .head input[type=checkbox]{
+    width:22px;height:22px;flex:0 0 22px;margin:1px 0 0;accent-color:#4caf7d;border-radius:6px
+  }
+  .shot .head .txt{font-size:14.5px;font-weight:500;line-height:1.4}
+  .shot .head .txt small{display:block;color:var(--dim2);font-size:12.5px;font-weight:400;margin-top:2px}
+  details{border-top:1px solid var(--line)}
+  details>summary{
+    list-style:none;cursor:pointer;padding:9px 12px;font-size:13px;color:var(--dim);
+    display:flex;justify-content:space-between;align-items:center;gap:8px
+  }
+  details>summary::-webkit-details-marker{display:none}
+  details>summary::after{content:"caption ▾";font-size:12px;color:var(--amber)}
+  details[open]>summary::after{content:"caption ▴"}
+  .dbody{padding:0 12px 12px}
+  .dbody .grid2{gap:8px}
+  .cap{margin-top:10px;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfc9bd;
+    background:#0b0b0f;border:1px dashed var(--line);border-radius:9px;padding:9px 10px;word-break:break-word}
+  pre{
+    margin:0;background:#0b0b0f;border:1px solid var(--line);border-radius:11px;padding:12px;
+    overflow-x:auto;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d7d2c7
+  }
+  code.inline{font:12.5px ui-monospace,Menlo,monospace;background:#0b0b0f;border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:#d7d2c7}
+  .btn-strong{background:var(--amber);color:#1b1206;border-color:var(--amber);font-weight:700}
+  .btn-ghost{background:transparent;color:var(--dim)}
+  .btn-sm{padding:6px 10px;font-size:13px;border-radius:9px}
+  .copybtn{font-size:12.5px;padding:6px 10px;margin-top:8px}
+  .pill{display:inline-block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+    border-radius:99px;padding:3px 9px;margin-right:6px}
+  .pill.free{background:#12240f;color:#8fd67d;border:1px solid #2b4022}
+  .pill.cost{background:#241b12;color:var(--amber);border:1px solid #4a3520}
+  .table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .table td,.table th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  .table td:first-child{color:var(--ink);white-space:nowrap}
+  .table th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim2)}
+  .table tr:last-child td{border-bottom:none}
+  .slider{display:flex;align-items:center;gap:12px}
+  .slider input[type=range]{flex:1;accent-color:var(--amber)}
+  .slider b{font-variant-numeric:tabular-nums;min-width:44px;text-align:right;color:var(--amber)}
+  .note{border-left:2px solid var(--amber);padding:2px 0 2px 11px;color:var(--dim);font-size:14px;margin:10px 0}
+  .note b{color:var(--ink)}
+  .banned{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .banned span{font-size:12.5px;color:var(--red);border:1px solid #4a2b28;background:#1e1211;border-radius:7px;padding:3px 8px;text-decoration:line-through}
+  .savebar{position:sticky;bottom:0;padding:10px 0;background:linear-gradient(rgba(10,10,12,0),var(--bg) 55%);display:flex;gap:8px;flex-wrap:wrap}
+  footer{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim2);font-size:12.5px}
+  .ok-msg{font-size:12.5px;color:var(--green);margin-left:2px}
+  .hint{font-size:13px;color:var(--dim2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Character LoRA Studio</div>
+  <h1>One face, <span>every post.</span></h1>
+  <p class="sub">Dataset plan, captions, training settings and realism prompts for a photoreal AI character. Free, runs in your browser, saves on your device.</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" id="t-start" aria-selected="true" data-tab="start">Start</button>
+  <button class="tab" role="tab" id="t-dataset" aria-selected="false" data-tab="dataset">Dataset</button>
+  <button class="tab" role="tab" id="t-captions" aria-selected="false" data-tab="captions">Captions</button>
+  <button class="tab" role="tab" id="t-train" aria-selected="false" data-tab="train">Train</button>
+  <button class="tab" role="tab" id="t-hosted" aria-selected="false" data-tab="hosted">Hosted</button>
+  <button class="tab" role="tab" id="t-generate" aria-selected="false" data-tab="generate">Generate</button>
+</div>
+
+<!-- ============ START ============ -->
+<section id="start" class="on">
+  <div class="card">
+    <h2>Can this be free? Mostly, yes</h2>
+    <p><span class="pill free">£0</span> This app, your captions, the settings, the prompt library: free forever, no account, no server. It saves everything in your own browser.</p>
+    <p><span class="pill free">£0</span> Training on your own GPU: free apart from electricity. Your RTX 3060 12GB can do it, but it is at the bottom edge of what works.</p>
+    <p><span class="pill cost">~$3–7 per run</span> Only if local training fights you: hosted training (fal.ai Krea 2 trainer, or a FLUX trainer) charges per run, not per month. Skip it unless you have to.</p>
+    <p><span class="pill cost">N/A</span> No web app can train for you for free. Training is GPU compute; nothing in a browser tab can borrow a 12GB card. This app does the thinking and the record-keeping; your PC does the heavy lifting.</p>
+  </div>
+
+  <div class="card">
+    <h2>Your rig against the job</h2>
+    <div class="grid2">
+      <div class="stat"><div class="k">GPU</div><div class="v">RTX 3060 12GB <span class="warn">tight but proven</span></div></div>
+      <div class="stat"><div class="k">System RAM</div><div class="v">16GB single stick <span class="bad">the real pinch</span></div></div>
+      <div class="stat"><div class="k">CPU</div><div class="v">Ryzen 5 5600 <span class="ok">fine</span></div></div>
+      <div class="stat"><div class="k">Disk</div><div class="v">500GB SSD <span class="ok">fine, keep ~80GB free</span></div></div>
+    </div>
+    <p style="margin-top:12px">A 12B-parameter model (Krea 2 RAW) does not fit in 12GB. The trick everyone uses is FP8 weight compression plus pushing most of the model into system RAM and streaming it back for each step. That is why 12GB works and why <strong>16GB of RAM is your weak link</strong>: the model lives there while it trains.</p>
+    <ul class="clean">
+      <li><b>Do this first:</b> set a 64GB Windows pagefile on the SSD (System → Advanced → Performance → Virtual memory). It is the difference between a crash and a slow night.</li>
+      <li><b>Close everything else</b> while training. Browser tabs eat the RAM the model needs.</li>
+      <li><b>Expect 4–9 hours</b> for one character on this card. Leave it running overnight.</li>
+      <li><b>If it thrashes or OOMs</b>, fall back to FLUX.1 dev, which is the comfortable 12GB path and still photoreal at rank 16–32.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>The pipeline, in order</h2>
+    <ul class="clean">
+      <li><b>1 · Seed the character.</b> One photoreal portrait you actually believe. Everything inherits its flaws, so refuse anything plasticky here.</li>
+      <li><b>2 · Build 30–40 shots</b> of that same face (angles, outfits, light, framing). The dataset is where consistency is actually decided.</li>
+      <li><b>3 · Cull hard.</b> One drifted jaw or wrong eye colour teaches the model to be inconsistent. Delete it.</li>
+      <li><b>4 · Caption only what changes</b> (framing, pose, outfit, light, background). Never the face, hair or body: those must stay welded to the trigger word.</li>
+      <li><b>5 · Train</b> on Krea 2 RAW, render on Krea 2 Turbo at 0.75–0.85 strength.</li>
+      <li><b>6 · Prompt like a photographer</b>, not like an AI. Camera, lens, light, grain, pores.</li>
+    </ul>
+    <p class="hint">The Dataset tab builds the exact shot list. The Captions tab writes the .txt files. The Train tab gives you the command line and the settings. Generate gives you the prompt.</p>
+  </div>
+
+  <div class="card">
+    <h2>Put this online for free (10 minutes, from your phone)</h2>
+    <ul class="clean">
+      <li>Make a free <b>GitHub</b> account.</li>
+      <li><b>New repository</b> → name it <code class="inline">character-studio</code> → Public → Create.</li>
+      <li><b>Add file → Upload files</b> → upload this <code class="inline">index.html</b> → Commit.</li>
+      <li><b>Settings → Pages</b> → Source: <b>Deploy from a branch</b> → Branch: <b>main</b>, folder <b>/ (root)</b> → Save.</li>
+      <li>Wait 1–2 minutes. Your app is live at <code class="inline">https://yourname.github.io/character-studio/</code>. Bookmark it on your iPhone home screen.</li>
+    </ul>
+    <p class="hint">GitHub Pages free tier: up to 1GB per site, ~100GB traffic a month, static files only. That is many thousand times more than one personal tool needs. No card, no expiry.</p>
+  </div>
+</section>
+
+<!-- ============ DATASET ============ -->
+<section id="dataset">
+  <div class="card">
+    <h2>Your shot list</h2>
+    <p>32 shots that lock a face from every direction. Tick them off as you generate and cull. Each one carries the caption slots already filled in, ready to edit in the Captions tab.</p>
+    <label for="trigger">Trigger word (nonsense token, same for every image)</label>
+    <input id="trigger" value="ohwx" spellcheck="false" autocapitalize="off">
+    <p class="tiny">Use something meaningless like <code class="inline">ohwx</code> or an invented token. Do not use a real name or the word TOK: real words already mean something to the model.</p>
+    <div style="display:flex;gap:9px;align-items:flex-start;margin-top:14px;padding:10px 11px;background:#0f0f13;border:1px solid var(--line);border-radius:10px">
+      <input type="checkbox" id="incTrigger" checked style="width:20px;height:20px;flex:0 0 20px;margin:1px 0 0;accent-color:var(--amber)">
+      <div><div style="font-size:13.5px">Prepend the trigger word to every caption file</div>
+      <div class="hint" style="margin-top:2px">Turn this off if your trainer adds the trigger itself (the free Kaggle notebook does). Twice is worse than not at all.</div></div>
+    </div>
+    <div class="progress-line" style="margin-top:16px"><span>Progress</span><span id="progText">0 / 32</span></div>
+    <div class="bar"><i id="progBar"></i></div>
+  </div>
+
+  <div id="shots"></div>
+
+  <div class="savebar">
+    <button class="btn-strong" id="exportChecklist">Download checklist (.md)</button>
+    <button class="btn-ghost" id="resetDone">Reset ticks</button>
+  </div>
+
+  <div class="card">
+    <h2>Rules that decide whether this works</h2>
+    <ul class="clean">
+      <li><b>Resolution:</b> every image at least 1024px on the long edge. Soft source, soft face.</li>
+      <li><b>Same face, different everything else.</b> 6 lighting setups, 3 outfits, 3–4 backgrounds, all dull and different.</li>
+      <li><b>Mix framings:</b> close-up, waist-up, full body. A LoRA trained only on portraits cannot shoot a full body.</li>
+      <li><b>Not all standing:</b> sitting, walking, crouching, in a car, seen from behind.</li>
+      <li><b>No beauty filters, no upscaling, no smoothing.</b> Grain is your friend; it is the main thing that reads as "photograph".</li>
+      <li><b>20–40 images total</b> for the character, 10–20 of them face-focused. More than 40 and it starts averaging.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CAPTIONS ============ -->
+<section id="captions">
+  <div class="card">
+    <h2>Caption files</h2>
+    <p>One <code class="inline">.txt</code> per image, same filename as the image. These are generated from the shot list: edit any slot in the Dataset tab and the caption updates here.</p>
+    <p><strong>Caption only what changes.</strong> Framing, pose, outfit, light, background. Never the face, hair, age or body: constant things must be absorbed by the trigger word, or the LoRA stops being one person.</p>
+    <div class="row" style="margin-top:12px">
+      <button class="btn-strong" id="copyAllCaps">Copy all captions</button>
+      <button id="downloadAllCaps">Download all (.txt)</button>
+    </div>
+  </div>
+  <div id="capList"></div>
+  <div class="card">
+    <h2>Good vs bad caption</h2>
+    <p><span class="bad">Bad:</span> <code class="inline">ohwx, a beautiful woman with curly dark hair, freckles, hazel eyes, standing in a cafe</code></p>
+    <p>That teaches the model that "curly dark hair" is optional at inference. Drop the identity words.</p>
+    <p><span class="ok">Good:</span> <code class="inline">ohwx, waist-up portrait, seated at a table, wearing a cream knit sweater, soft window light from the left, blurred cafe interior</code></p>
+    <p>Same person every time, while pose, clothing and light stay controllable.</p>
+  </div>
+</section>
+
+<!-- ============ TRAIN ============ -->
+<section id="train">
+  <div class="card">
+    <h2>Pick your path</h2>
+    <p><strong>Krea 2 RAW</strong> is the most photoreal open model for people, and it does run on a 3060 12GB — at 512px, rank 16, with block swapping. It is the tightest fit of the three.</p>
+    <p><strong>FLUX.1 dev</strong> is the comfortable 12GB path and has the biggest LoRA ecosystem. Slightly less photoreal than Krea 2 out of the box, easy to fix with prompt and strength.</p>
+    <p class="hint">Train on the RAW/base checkpoint, render on the fast distilled one. That division works cleanly: identity transfers, speed stays.</p>
+  </div>
+
+  <div class="card">
+    <h2>Krea 2 on 12GB — Musubi Tuner</h2>
+    <p class="tiny">Windows. Git + Python 3.10/3.11 + recent NVIDIA driver. <code class="inline">git clone https://github.com/kohya-ss/musubi-tuner</code></p>
+    <table class="table">
+      <tr><td>Base</td><td>Krea 2 RAW, FP8 scaled (<code class="inline">--fp8_base --fp8_scaled</code>)</td></tr>
+      <tr><td>Rank / alpha</td><td>16 / 16</td></tr>
+      <tr><td>Resolution</td><td>512×512, buckets off</td></tr>
+      <tr><td>Optimizer</td><td>AdamW 8-bit, lr 1e-4, cosine</td></tr>
+      <tr><td>Blocks swapped</td><td>22 of 28 (keeps peak VRAM ~10.5GB)</td></tr>
+      <tr><td>Speed</td><td>~7–8 sec/step tuned; 1300 steps ≈ 3–8 hrs</td></tr>
+      <tr><td>Stop point</td><td>Checkpoints every 250; test 1000 / 1250 / 1500</td></tr>
+    </table>
+    <h3>Environment</h3>
+    <pre id="kreaEnv">set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True</pre>
+    <button class="copybtn" data-copy="kreaEnv">Copy</button>
+    <p class="tiny">Without <code class="inline">expandable_segments</code> you get an OOM on step 2 or 3 — the memory is there but fragmented. This is the single most common failure.</p>
+
+    <h3>Dataset config</h3>
+    <pre id="kreaToml">[general]
+resolution = [512, 512]
+caption_extension = ".txt"
+batch_size = 1
+enable_bucket = false
+
+[[datasets]]
+image_directory = "C:/dataset/character"
+num_repeats = 10
+
+  [[datasets.subsets]]
+  image_dir = "C:/dataset/character"
+  num_repeats = 10
+  caption_extension = ".txt"</pre>
+    <button class="copybtn" data-copy="kreaToml">Copy</button>
+
+    <h3>Train command</h3>
+    <pre id="kreaCmd">accelerate launch --mixed_precision bf16 --num_cpu_threads_per_process 8 ^
+  src/musubi_tuner/krea2_train_network.py ^
+  --dit "C:/models/krea2/krea2_raw_fp8.safetensors" ^
+  --vae "C:/models/qwen_image_vae.safetensors" ^
+  --text_encoder "C:/models/qwen3_vl_4b.safetensors" ^
+  --dataset_config "C:/krea2/dataset.toml" ^
+  --network_module networks.lora_krea2 ^
+  --network_dim 16 --network_alpha 16 ^
+  --fp8_base --fp8_scaled ^
+  --blocks_to_swap 22 --block_swap_h2d_only ^
+  --gradient_checkpointing --sdpa ^
+  --optimizer_type AdamW8bit --learning_rate 1e-4 ^
+  --max_train_steps 1300 ^
+  --save_every_n_steps 250 --sample_every_n_steps 250 ^
+  --mixed_precision bf16 --seed 42 ^
+  --output_dir "C:/krea2/out" --output_name "character_v1"</pre>
+    <button class="copybtn" data-copy="kreaCmd">Copy</button>
+    <p class="tiny">Exact flag names drift between releases. Run <code class="inline">python src/musubi_tuner/krea2_train_network.py --help</code> once and match them. The values above are the ones that matter, not the spelling.</p>
+  </div>
+
+  <div class="card">
+    <h2>FLUX.1 dev on 12GB — AI Toolkit</h2>
+    <p class="tiny">The easier path. Web UI on <code class="inline">localhost:8675</code>, no command line needed. Paste this YAML into a new job.</p>
+    <pre id="fluxYaml">job: extension
+config:
+  name: "character_v1"
+  process:
+    - type: 'sd_trainer'
+      training_folder: "C:/aitk/output"
+      device: cuda:0
+      network:
+        type: "lora"
+        linear: 16
+        linear_alpha: 16
+      save:
+        dtype: float16
+        save_every: 250
+        max_step_saves_to_keep: 8
+      datasets:
+        - folder_path: "C:/dataset/character"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.05
+          shuffle_tokens: false
+          cache_latents_to_disk: true
+          resolution: [512]
+      train:
+        batch_size: 1
+        steps: 2000
+        gradient_accumulation_steps: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        optimizer: "adamw8bit"
+        lr: 4e-4
+        dtype: bf16
+      model:
+        name_or_path: "black-forest-labs/FLUX.1-dev"
+        is_flux: true
+        quantize: true
+      sample:
+        sampler: "flowmatch"
+        sample_every: 250
+        width: 1024
+        height: 1024
+        prompts:
+          - "ohwx, waist-up portrait, soft window light, natural skin texture"
+        neg: ""
+        seed: 42
+        walk_seed: true
+        guidance_scale: 4
+        sample_steps: 25</pre>
+    <button class="copybtn" data-copy="fluxYaml">Copy</button>
+    <p class="tiny"><code class="inline">quantize: true</code> is what lets this fit. 2000 steps ≈ 3–5 hrs on a 3060. Raise <code class="inline">resolution</code> to 768 only if you have VRAM to spare.</p>
+  </div>
+
+  <div class="card">
+    <h2>How many steps?</h2>
+    <div class="grid2">
+      <div><label for="nImg">Images</label><input id="nImg" type="number" value="32" min="1"></div>
+      <div><label for="nRep">Repeats per image</label><input id="nRep" type="number" value="10" min="1"></div>
+    </div>
+    <div class="stat" style="margin-top:12px">
+      <div class="k">Total steps</div><div class="v" id="calcSteps">320</div>
+      <div class="k" style="margin-top:8px">Estimated time on your card</div><div class="v" id="calcTime">—</div>
+      <div class="k" style="margin-top:8px">Checkpoints to keep</div><div class="v" id="calcCkpt">3</div>
+    </div>
+    <p class="tiny">Aim for each image seen 60–120 times. Fewer images, more repeats. Save and sample every 250 steps so you can pick the best checkpoint instead of guessing.</p>
+  </div>
+
+  <div class="card">
+    <h2>Disk budget (500GB is plenty, keep 80GB free)</h2>
+    <table class="table">
+      <tr><td>Krea 2 RAW fp8</td><td>~12GB</td></tr>
+      <tr><td>Qwen3-VL text encoder</td><td>~8GB</td></tr>
+      <tr><td>Krea 2 Turbo (ComfyUI, GGUF)</td><td>~8GB</td></tr>
+      <tr><td>FLUX.1 dev fp8/GGUF</td><td>~12GB</td></tr>
+      <tr><td>Dataset + captions</td><td>&lt;500MB</td></tr>
+      <tr><td>Checkpoints (1–2GB × 8)</td><td>~12GB</td></tr>
+      <tr><td>Latent / text caches</td><td>1–3GB</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ HOSTED ============ -->
+<section id="hosted">
+  <div class="card">
+    <h2>Train on someone else's GPU, for free</h2>
+    <p><span class="pill free">£0</span> <strong>Kaggle Notebooks</strong> is the one that actually works for this: two T4 GPUs, 29GB RAM, 12-hour sessions, about <strong>30 GPU-hours a week</strong> that reset every week, forever. No card. Phone verification is all it asks.</p>
+    <p>That is roughly 15 full training runs a week. You will run out of patience long before you run out of quota.</p>
+    <table class="table">
+      <tr><th>What you get</th><th>Free tier</th></tr>
+      <tr><td>GPU</td><td>2 × NVIDIA T4, 16GB each (separate cards)</td></tr>
+      <tr><td>RAM / CPU</td><td>29GB, 4 cores</td></tr>
+      <tr><td>Session</td><td>12 hours max, GPU idles out after ~20 min</td></tr>
+      <tr><td>Quota</td><td>~30 GPU-hours a week, shared across both cards</td></tr>
+      <tr><td>Disk</td><td>20GB saved output; scratch is bigger but wiped</td></tr>
+      <tr><td>Cost</td><td>£0, no card, no trial expiry</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>The catch, and why FLUX</h2>
+    <p>A T4 is a 2018 card: <strong>no FP8, no bf16</strong>. So the Krea 2 trick (compress the 12B model to FP8) does not exist on Kaggle. What does work is quantising FLUX.1 [dev] to <strong>4-bit (NF4)</strong> and training rank 32 at 1024px in it — about 11GB of VRAM, which fits a single T4 with room to spare.</p>
+    <p>FLUX.1 [dev] is slightly less photoreal than Krea 2 straight out of the box, and it is the difference between free and not free. Photorealism still comes mostly from your dataset and your prompts, which is the part you control.</p>
+    <p class="note"><b>Licence:</b> FLUX.1 [dev] is non-commercial. Fine for a personal character; check the licence before you sell anything built on it. FLUX.1 [schnell] is Apache-2.0 but weaker at holding a face.</p>
+  </div>
+
+  <div class="card">
+    <h2>Settings that fit a T4</h2>
+    <table class="table">
+      <tr><td>Base</td><td>FLUX.1 [dev], NF4 quantised transformer</td></tr>
+      <tr><td>Rank / alpha</td><td>32 / 32</td></tr>
+      <tr><td>Resolution</td><td>1024, bucketing on</td></tr>
+      <tr><td>Optimizer</td><td>AdamW 8-bit, lr 1e-4, cosine, 50 warmup</td></tr>
+      <tr><td>Epochs</td><td>20 on 40–50 images (~2000–2500 image-steps)</td></tr>
+      <tr><td>Speed</td><td>~3.2 sec/step per T4; ~1–2 hrs for the run</td></tr>
+      <tr><td>Peak VRAM</td><td>~11GB of 16GB</td></tr>
+      <tr><td>Render with</td><td>strength 0.75–0.85, guidance 3.5, 25–30 steps</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Run it, in order</h2>
+    <ul class="clean">
+      <li><b>1 · Kaggle account + phone verification.</b> No verification, no GPU.</li>
+      <li><b>2 · Notebook settings:</b> Accelerator <b>GPU T4 x2</b>, Internet <b>On</b>.</li>
+      <li><b>3 · Hugging Face:</b> free account, open the FLUX.1-dev model page, <b>accept the licence</b> (it is gated per repo), then make a <b>Read</b> token.</li>
+      <li><b>4 · Kaggle secret:</b> Add-ons → Secrets → new secret <code class="inline">HF_TOKEN</code> → paste the token → attach.</li>
+      <li><b>5 · Dataset:</b> upload your images and their <code class="inline">.txt</code> captions as a private Kaggle Dataset, then <b>Add input</b> to the notebook.</li>
+      <li><b>6 · Upload the notebook</b> (<code class="inline">flux-lora-kaggle.ipynb</code>) via File → Import Notebook, set the dataset slug in the loader cell, then <b>Run all</b>.</li>
+    </ul>
+    <p class="note"><b>Trigger word:</b> this trainer prepends the trigger itself. Export your captions with the trigger <b>off</b> (the checkbox in the Dataset tab) and set the token once in the notebook config. Twice in a caption is worse than not at all.</p>
+    <p class="hint">If the repo drifts from Kaggle's current image, the same job runs locally on your 3060 with <code class="inline">--quantize nf4</code>, or on kohya / AI Toolkit. The dataset and captions do not change.</p>
+  </div>
+
+  <div class="card">
+    <h2>Only a browser? That is enough</h2>
+    <p>Nothing in this path installs anything. Kaggle, Hugging Face and this app are all websites, so an old office PC with Intel graphics runs the whole thing from a tab. The GPU you train on belongs to Kaggle, not to you.</p>
+    <p><strong>Step 0 — you still need seed images.</strong> 20–40 shots of one face, before any training. You can make those on Kaggle too: SDXL at 1024px on a T4 is a few seconds per image, so 40 shots costs minutes of the same weekly quota. The notebook <code>seed-faces-kaggle.ipynb</code> does this end to end — 64 candidates, a numbered contact sheet, then the img2img pass that rebuilds your 36-shot set with captions.</p>
+    <ul class="clean">
+      <li><b>Generate wide, then narrow.</b> Make 60–80 candidates in a notebook, pick the <b>6–8</b> that look like an actual photograph of an actual person, then rebuild the set from those with image-to-image at low strength so the face stays put.</li>
+      <li><b>Never build the set from the weakest seed.</b> The seed's realism is the ceiling for everything after it: if the starting face is plasticky, the LoRA learns plastic.</li>
+      <li><b>Then</b> run the training notebook on that set, same free quota.</li>
+    </ul>
+    <p class="note"><b>On a work machine:</b> use a <b>personal</b> Kaggle and Hugging Face account, never the work one. Nothing is installed, nothing is saved to that PC's disk, and the only files involved are your own character images — keep work documents out of the Kaggle dataset.</p>
+    <p class="hint">Intel integrated graphics can technically run Stable Diffusion through OpenVINO, at roughly half a minute per image and with a quality ceiling well below FLUX. On an office machine that usually means no admin rights anyway — not worth it when the free tab path is better.</p>
+  </div>
+
+  <div class="card">
+    <h2>The other free options, ranked honestly</h2>
+    <table class="table">
+      <tr><th>Where</th><th>Verdict</th></tr>
+      <tr><td>Kaggle</td><td>Best free. 30h/week, 2×T4, repeatable. This is the plan.</td></tr>
+      <tr><td>Lightning AI</td><td>~50 free GPU hours + 30 credits, and L4 cards (24GB, modern). One-off, not a habit.</td></tr>
+      <tr><td>Modal</td><td>$30 free every month, any GPU, but a card on file. The sustainable version if you outgrow Kaggle.</td></tr>
+      <tr><td>Colab free</td><td>T4 when you can get one, unpublished quota, sessions die mid-run. For experiments only.</td></tr>
+      <tr><td>RunPod / fal / Replicate</td><td>No free credit. Cheap, but not free.</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ GENERATE ============ -->
+<section id="generate">
+  <div class="card">
+    <h2>Realism controls</h2>
+    <label>LoRA strength <span class="hint">(0.75–0.85 looks like a person; 1.0 looks rendered)</span></label>
+    <div class="slider"><input id="strength" type="range" min="0.5" max="1.1" step="0.05" value="0.8"><b id="strengthV">0.80</b></div>
+    <p class="tiny">If the face gets glassy or over-sharp, go down, not up. Strength 0.8 plus a proper photo prompt beats 1.0 every time.</p>
+  </div>
+
+  <div class="card">
+    <h2>Prompt builder</h2>
+    <div class="grid2">
+      <div><label for="pAction">Subject &amp; action</label><input id="pAction" value="a woman in a cream knit sweater, leaning against a painted wall, mid-laugh"></div>
+      <div><label for="pPlace">Place</label><input id="pPlace" value="a quiet side street in the late afternoon"></div>
+      <div><label for="pLens">Camera &amp; lens</label>
+        <select id="pLens">
+          <option>shot on a 35mm film camera, 50mm lens</option>
+          <option selected>shot on an 85mm lens, f/1.8</option>
+          <option>shot on a phone, 26mm, slightly wide</option>
+          <option>medium format, 80mm, shallow depth of field</option>
+        </select>
+      </div>
+      <div><label for="pLight">Light</label>
+        <select id="pLight">
+          <option selected>soft overcast daylight</option>
+          <option>harsh midday sun, hard shadows</option>
+          <option>golden hour backlight, lens flare</option>
+          <option>single lamp in a dark bar, warm falloff</option>
+          <option>direct phone flash at night</option>
+          <option>window light from the left, indoor</option>
+        </select>
+      </div>
+      <div><label for="pFilm">Film / finish</label>
+        <select id="pFilm">
+          <option selected>Kodak Portra 400, slight grain</option>
+          <option>digital, natural colour, light grain</option>
+          <option>CineStill 800T, tungsten cast</option>
+          <option>cheap phone camera, mild noise</option>
+        </select>
+      </div>
+      <div><label for="pFraming">Framing</label>
+        <select id="pFraming">
+          <option>close-up</option>
+          <option selected>waist-up portrait</option>
+          <option>full body, 35mm environmental</option>
+          <option>candid, off-centre, wide</option>
+        </select>
+      </div>
+    </div>
+    <label style="margin-top:14px">Your prompt</label>
+    <textarea id="pOut" rows="5" readonly></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn-strong" id="copyPrompt">Copy prompt</button>
+      <button class="btn-ghost" id="rebuildPrompt">Rebuild</button>
+    </div>
+    <p class="tiny" style="margin-top:10px">The fixed tail is the important part: <em>natural skin texture, visible pores, slight asymmetry, no makeup filter, true-to-life colour</em>. Keep it on every prompt.</p>
+  </div>
+
+  <div class="card">
+    <h2>Never put these in a prompt</h2>
+    <div class="banned"><span>perfect</span><span>flawless</span><span>stunning</span><span>hyperrealistic</span><span>8k</span><span>masterpiece</span><span>beautiful</span><span>detailed skin</span><span>ultra sharp</span></div>
+    <p style="margin-top:10px">They are the AI look you are trying to escape. They push the model toward airbrushing. "Slight asymmetry" and "visible pores" push the other way.</p>
+  </div>
+
+  <div class="card">
+    <h2>Test prompts — run all five before you trust it</h2>
+    <p>If the face survives these, it will survive a feed. If it breaks on any of them, add that case to the dataset and retrain.</p>
+    <ul class="clean">
+      <li><b>Harsh sun:</b> hard shadows across the face, squinting. Kills over-smoothing instantly.</li>
+      <li><b>Dark bar:</b> one lamp, high ISO, grain. Reveals a fake-looking jaw and plastic eyes.</li>
+      <li><b>Mirror selfie:</b> phone flash, bathroom, arm raised. The most common Instagram format, and the easiest to fail.</li>
+      <li><b>Side profile:</b> 90°, the hardest angle for a LoRA that only saw three-quarters.</li>
+      <li><b>Wide shot:</b> small face in a big frame. Consistency must hold with fewer pixels.</li>
+    </ul>
+    <button class="btn-strong" id="loadTests" style="margin-top:6px">Load the 5 test prompts</button>
+    <pre id="tests" style="margin-top:10px"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Render settings (ComfyUI)</h2>
+    <table class="table">
+      <tr><td>Krea 2 Turbo</td><td>8 steps, CFG 1.0, 1024×1024, GGUF Q5_K_M</td></tr>
+      <tr><td>FLUX.1 dev</td><td>20–25 steps, guidance 3.5–4.5, 1024px, fp8 or GGUF Q8</td></tr>
+      <tr><td>LoRA weight</td><td>0.75–0.85</td></tr>
+      <tr><td>Seed</td><td>Fixed while you compare; random for the feed</td></tr>
+      <tr><td>Upscale</td><td>Skip it, or 1.25× maximum. Big upscales are where the plastic creeps back</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Posting honestly</h2>
+    <p>Instagram expects AI-generated content to be labelled. Since the persona is the product, being open about it costs you nothing and protects the account. Label the post, keep the bio honest, and put the effort where people actually judge it: the face staying the same.</p>
+  </div>
+</section>
+
+<footer>
+  Character LoRA Studio · runs entirely in your browser · your data stays on this device.
+</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "clstudio.v1";
+
+  var GROUPS = [
+    { name: "Face & angles (12)", items: [
+      ["Front, neutral expression, even light","waist-up portrait","facing camera, relaxed shoulders","cream knit sweater","soft overcast daylight","plain grey wall"],
+      ["Front, slight smile","waist-up portrait","facing camera, small smile","linen shirt","soft window light from the left","plain interior wall"],
+      ["Three-quarter left","close-up portrait","body angled 45° to the left, looking at camera","black tee","soft overcast daylight","blurred street behind"],
+      ["Three-quarter right","waist-up portrait","body angled 45° to the right, looking at camera","denim jacket","golden hour side light","brick wall"],
+      ["Near-profile left","close-up portrait","head turned 80° to the left","grey hoodie","single soft window light","dark interior"],
+      ["Full profile right","close-up portrait","head turned 90° to the right, looking away","white shirt","harsh midday sun","plain sky background"],
+      ["Low angle","waist-up portrait","camera below chin, looking down at lens","leather jacket","overcast daylight","tall buildings behind"],
+      ["High angle","waist-up portrait","camera above head, looking up","striped top","soft indoor light","wooden floor visible"],
+      ["Detail close-up","extreme close-up","eyes and cheek texture only","none","soft diffuse light","plain background"],
+      ["Hard sun close-up","close-up portrait","turned slightly away, squinting","tank top","harsh midday sun, hard shadows","outdoor wall"],
+      ["Mid-laugh candid","candid, off-centre","laughing, head tilted back slightly","oversized shirt","warm evening light","park bench"],
+      ["Chin on hand","close-up portrait","chin resting on hand, elbow on table","knit cardigan","window light from the side","cafe table"]
+    ]},
+    { name: "Body, outfits & framing (12)", items: [
+      ["Full body standing","full body","standing straight, arms relaxed","jeans and white tee","overcast daylight","empty street"],
+      ["Full body walking","full body","walking toward camera, mid stride","coat over dress","low evening sun","city pavement"],
+      ["Sitting on a step","full body","sitting on a stone step, elbows on knees","hoodie and trousers","shade under an awning","building entrance"],
+      ["Seated at a table","waist-up portrait","seated, hands around a cup","cream knit sweater","soft window light from the left","blurred cafe interior"],
+      ["Outdoor waist-up","waist-up portrait","standing, hands in pockets","black tee","flat overcast light","grey concrete wall"],
+      ["Evening street","waist-up portrait","leaning on a railing, looking off frame","denim jacket","warm street lamp light","night street, blurred lights"],
+      ["Mirror selfie","full body, phone in frame","standing in front of a mirror, arm raised holding a phone","casual clothes","bathroom ceiling light","tiled bathroom"],
+      ["From behind","full body","back to camera, looking over the shoulder","loose shirt","late afternoon sun","open field"],
+      ["Crouching","full body","crouched low, forearms on knees","sports top","harsh midday sun","gravel ground"],
+      ["Arms crossed","full body","leaning against a wall, arms crossed","blazer over tee","side window light","corridor"],
+      ["In a car","waist-up portrait","passenger seat, head turned to the window","knit scarf","daylight through glass","car interior"],
+      ["Walking away, wide","wide environmental shot","walking away from camera down a street","long coat","overcast dusk","wide empty street"]
+    ]},
+    { name: "Light & location tests (8)", items: [
+      ["Dark bar","waist-up portrait","seated, looking to the side","silk shirt","single warm lamp, deep shadow","dark bar interior"],
+      ["Harsh midday","waist-up portrait","standing, hand shading eyes","sun hat and tank top","direct overhead sun","dusty road"],
+      ["Golden hour backlight","waist-up portrait","standing, hair backlit","light dress","sun behind subject, lens flare","open horizon"],
+      ["Fluorescent shop","waist-up portrait","browsing a shelf, side glance","casual jacket","green fluorescent overhead light","small shop aisle"],
+      ["Direct flash at night","waist-up portrait","standing, close to camera","party top","direct on-camera flash","dark street, black background"],
+      ["Bathroom mirror light","close-up portrait","facing mirror, phone at chest","towel robe","even makeup-mirror light","tiled bathroom"],
+      ["Window side light","waist-up portrait","seated by a window, reading","oversized knit","soft side window light","quiet room"],
+      ["Dappled shade","full body","walking under trees","summer dress","dappled light through leaves","tree-lined path"]
+    ]}
+  ];
+
+  var BANNED_TAIL = "natural skin texture, visible pores, slight asymmetry, no makeup filter, true-to-life colour, candid photograph";
+
+  function base(){ return { trigger:"ohwx", items:{}, done:{} }; }
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if(s && s.items) return s; } catch(e){}
+    return base();
+  }
+  var S = load();
+  if(!S.done) S.done = {};
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+
+  var ALL = [];
+  GROUPS.forEach(function(g, gi){
+    g.items.forEach(function(it, ii){
+      ALL.push({ id: gi + "-" + ii, group: g.name, label: it[0],
+        framing: it[1], pose: it[2], outfit: it[3], light: it[4], bg: it[5] });
+    });
+  });
+
+  function rec(id){
+    var src = null;
+    for(var i=0;i<ALL.length;i++) if(ALL[i].id === id) src = ALL[i];
+    if(!S.items[id]) S.items[id] = { framing:src.framing, pose:src.pose, outfit:src.outfit, light:src.light, bg:src.bg };
+    return S.items[id];
+  }
+  function caption(id){
+    var r = rec(id);
+    var t = (document.getElementById("trigger").value || "ohwx").trim().replace(/,$/,"");
+    var el = document.getElementById("incTrigger");
+    var inc = el ? el.checked : true;
+    var bits = inc ? [t, r.framing, r.pose] : [r.framing, r.pose];
+    if(r.outfit && r.outfit !== "none") bits.push("wearing " + r.outfit);
+    bits.push(r.light, r.bg);
+    return bits.filter(Boolean).join(", ");
+  }
+
+  /* ---------- tabs ---------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  tabs.forEach(function(b){
+    b.addEventListener("click", function(){
+      tabs.forEach(function(x){ x.setAttribute("aria-selected", x === b ? "true" : "false"); });
+      document.querySelectorAll("section").forEach(function(s){ s.classList.toggle("on", s.id === b.dataset.tab); });
+      if(b.dataset.tab === "captions") renderCaptions();
+      window.scrollTo({ top:0, behavior:"smooth" });
+    });
+  });
+
+  /* ---------- dataset ---------- */
+  var shotsEl = document.getElementById("shots");
+  GROUPS.forEach(function(g, gi){
+    var wrap = document.createElement("div");
+    wrap.className = "group";
+    var h = document.createElement("h4");
+    h.textContent = g.name;
+    wrap.appendChild(h);
+
+    g.items.forEach(function(it, ii){
+      var id = gi + "-" + ii;
+      rec(id);
+      var d = document.createElement("div");
+      d.className = "shot" + (S.done[id] ? " done" : "");
+      d.dataset.id = id;
+
+      var head = document.createElement("label");
+      head.className = "head";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!S.done[id];
+      var txt = document.createElement("span");
+      txt.className = "txt";
+      txt.innerHTML = "<span>" + esc(it[0]) + "</span><small>" + esc(it[1]) + " · " + esc(it[4]) + "</small>";
+      head.appendChild(cb); head.appendChild(txt);
+
+      var det = document.createElement("details");
+      var sum = document.createElement("summary");
+      sum.textContent = "caption slots";
+      det.appendChild(sum);
+
+      var body = document.createElement("div");
+      body.className = "dbody";
+      var g2 = document.createElement("div");
+      g2.className = "grid2";
+      [["framing","Framing"],["pose","Pose"],["outfit","Outfit"],["light","Light"],["bg","Background"]].forEach(function(p){
+        var l = document.createElement("label");
+        l.textContent = p[1];
+        var inp = document.createElement("input");
+        inp.value = rec(id)[p[0]];
+        inp.dataset.field = p[0];
+        inp.dataset.id = id;
+        inp.addEventListener("input", function(){
+          rec(id)[p[0]] = inp.value;
+          save();
+          var c = d.querySelector(".cap");
+          if(c) c.textContent = caption(id) + ".txt";
+        });
+        l.appendChild(inp);
+        g2.appendChild(l);
+      });
+      body.appendChild(g2);
+
+      var cap = document.createElement("div");
+      cap.className = "cap";
+      cap.textContent = caption(id) + ".txt";
+      body.appendChild(cap);
+
+      var row = document.createElement("div");
+      row.className = "row";
+      var cp = document.createElement("button");
+      cp.className = "copybtn";
+      cp.textContent = "Copy caption";
+      cp.addEventListener("click", function(){ copyText(caption(id), cp); });
+      var dl = document.createElement("button");
+      dl.className = "copybtn";
+      dl.textContent = "Download .txt";
+      dl.addEventListener("click", function(){ download("caption-" + id + ".txt", caption(id)); });
+      row.appendChild(cp); row.appendChild(dl);
+      body.appendChild(row);
+      det.appendChild(body);
+
+      cb.addEventListener("change", function(){
+        S.done[id] = cb.checked; save();
+        d.classList.toggle("done", cb.checked);
+        updateProgress();
+      });
+
+      d.appendChild(head); d.appendChild(det);
+      wrap.appendChild(d);
+    });
+    shotsEl.appendChild(wrap);
+  });
+
+  document.getElementById("trigger").value = S.trigger || "ohwx";
+  var itEl = document.getElementById("incTrigger");
+  itEl.checked = S.incTrigger !== false;
+  document.querySelectorAll(".shot .cap").forEach(function(c){
+    c.textContent = caption(c.closest(".shot").dataset.id) + ".txt";
+  });
+  itEl.addEventListener("change", function(){
+    S.incTrigger = this.checked; save();
+    document.querySelectorAll(".shot .cap").forEach(function(c){
+      c.textContent = caption(c.closest(".shot").dataset.id) + ".txt";
+    });
+    renderCaptions();
+  });
+
+  document.getElementById("trigger").addEventListener("input", function(){
+    S.trigger = this.value; save();
+    document.querySelectorAll(".shot .cap").forEach(function(c){
+      c.textContent = caption(c.closest(".shot").dataset.id) + ".txt";
+    });
+    renderCaptions();
+  });
+
+  function updateProgress(){
+    var done = 0;
+    ALL.forEach(function(a){ if(S.done[a.id]) done++; });
+    document.getElementById("progText").textContent = done + " / " + ALL.length;
+    document.getElementById("progBar").style.width = (done / ALL.length * 100) + "%";
+  }
+  updateProgress();
+
+  document.getElementById("resetDone").addEventListener("click", function(){
+    if(!confirm("Untick every shot? Caption slots are kept.")) return;
+    S.done = {}; save();
+    document.querySelectorAll(".shot").forEach(function(d){
+      d.classList.remove("done");
+      d.querySelector("input[type=checkbox]").checked = false;
+    });
+    updateProgress();
+  });
+
+  document.getElementById("exportChecklist").addEventListener("click", function(){
+    var out = ["# Character dataset — shot list", "", "Trigger: `" + (S.trigger||"ohwx") + "`", ""];
+    GROUPS.forEach(function(g, gi){
+      out.push("## " + g.name, "");
+      g.items.forEach(function(it, ii){
+        var id = gi + "-" + ii;
+        out.push("- [" + (S.done[id] ? "x" : " ") + "] " + it[0] + "  \n  `" + caption(id) + "`");
+      });
+      out.push("");
+    });
+    download("dataset-checklist.md", out.join("\n"));
+  });
+
+  /* ---------- captions tab ---------- */
+  function renderCaptions(){
+    var host = document.getElementById("capList");
+    host.innerHTML = "";
+    ALL.forEach(function(a){
+      var card = document.createElement("div");
+      card.className = "card";
+      card.style.padding = "13px 14px";
+      var head = document.createElement("div");
+      head.style.cssText = "display:flex;justify-content:space-between;gap:10px;align-items:baseline";
+      head.innerHTML = "<strong style='font-size:14px'>" + esc(a.label) + "</strong><span class='hint'>caption-" + a.id + ".txt</span>";
+      var cap = document.createElement("div");
+      cap.className = "cap";
+      cap.textContent = caption(a.id);
+      var row = document.createElement("div");
+      row.className = "row";
+      row.style.marginTop = "8px";
+      var b1 = document.createElement("button");
+      b1.className = "copybtn";
+      b1.textContent = "Copy";
+      b1.addEventListener("click", function(){ copyText(caption(a.id), b1); });
+      var b2 = document.createElement("button");
+      b2.className = "copybtn";
+      b2.textContent = "Download";
+      b2.addEventListener("click", function(){ download("caption-" + a.id + ".txt", caption(a.id)); });
+      row.appendChild(b1); row.appendChild(b2);
+      card.appendChild(head); card.appendChild(cap); card.appendChild(row);
+      host.appendChild(card);
+    });
+  }
+
+  document.getElementById("copyAllCaps").addEventListener("click", function(e){
+    var txt = ALL.map(function(a){ return caption(a.id); }).join("\n");
+    copyText(txt, e.currentTarget);
+  });
+  document.getElementById("downloadAllCaps").addEventListener("click", function(){
+    var out = ALL.map(function(a){ return "### caption-" + a.id + ".txt\n" + caption(a.id); }).join("\n\n");
+    download("all-captions.txt", out);
+  });
+
+  /* ---------- copy buttons ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function(btn){
+    btn.addEventListener("click", function(){
+      var el = document.getElementById(btn.dataset.copy);
+      if(el) copyText(el.textContent, btn);
+    });
+  });
+
+  /* ---------- calc ---------- */
+  function updateCalc(){
+    var n = parseInt(document.getElementById("nImg").value, 10) || 1;
+    var r = parseInt(document.getElementById("nRep").value, 10) || 1;
+    var steps = n * r;
+    document.getElementById("calcSteps").textContent = steps + " steps";
+    var lo = steps * 7 / 3600, hi = steps * 11 / 3600;
+    document.getElementById("calcTime").textContent = lo.toFixed(1) + "–" + hi.toFixed(1) + " hrs on a 3060 12GB";
+    document.getElementById("calcCkpt").textContent = Math.max(2, Math.floor(steps / 250)) + " (every 250 steps)";
+  }
+  document.getElementById("nImg").addEventListener("input", updateCalc);
+  document.getElementById("nRep").addEventListener("input", updateCalc);
+  updateCalc();
+
+  /* ---------- prompt builder ---------- */
+  var strength = document.getElementById("strength");
+  strength.addEventListener("input", function(){
+    document.getElementById("strengthV").textContent = Number(strength.value).toFixed(2);
+  });
+
+  function buildPrompt(){
+    var trig = (document.getElementById("trigger").value || "ohwx").trim();
+    var a = document.getElementById("pAction").value;
+    var p = document.getElementById("pPlace").value;
+    var lens = document.getElementById("pLens").value;
+    var light = document.getElementById("pLight").value;
+    var film = document.getElementById("pFilm").value;
+    var fr = document.getElementById("pFraming").value;
+    var txt = trig + ", " + fr + " of " + a + ", " + p + ", " + lens + ", " + light + ", " + film + ", " + BANNED_TAIL;
+    document.getElementById("pOut").value = txt;
+  }
+  ["pAction","pPlace","pLens","pLight","pFilm","pFraming"].forEach(function(id){
+    document.getElementById(id).addEventListener("input", buildPrompt);
+    document.getElementById(id).addEventListener("change", buildPrompt);
+  });
+  document.getElementById("rebuildPrompt").addEventListener("click", buildPrompt);
+  document.getElementById("copyPrompt").addEventListener("click", function(e){
+    copyText(document.getElementById("pOut").value, e.currentTarget);
+  });
+  buildPrompt();
+
+  var TESTS = [
+    "waist-up portrait, harsh midday sun, hard shadow across the face, squinting slightly, cheap phone camera, visible grain",
+    "waist-up portrait, dark bar interior, single warm lamp far behind, high ISO noise, deep shadow on one side",
+    "full body, bathroom mirror selfie, phone flash, arm raised holding the phone, flat ceiling light, tiles",
+    "close-up profile, head turned 90 degrees, overcast daylight, no makeup, visible pores",
+    "wide environmental shot, small figure in a large empty street, 24mm, overcast dusk, slight haze"
+  ];
+  document.getElementById("loadTests").addEventListener("click", function(){
+    var trig = (document.getElementById("trigger").value || "ohwx").trim();
+    var txt = TESTS.map(function(t, i){ return (i+1) + ". " + trig + ", " + t + ", " + BANNED_TAIL; }).join("\n\n");
+    document.getElementById("tests").textContent = txt;
+  });
+
+  /* ---------- helpers ---------- */
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+
+  function copyText(text, btn){
+    var done = function(){
+      if(!btn) return;
+      var old = btn.textContent;
+      btn.textContent = "Copied ✓";
+      setTimeout(function(){ btn.textContent = old; }, 1400);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ fallback(); });
+    } else { fallback(); }
+    function fallback(){
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch(e){}
+      document.body.removeChild(ta);
+    }
+  }
+
+  function download(name, text){
+    var blob = new Blob([text], { type:"text/plain;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+})();
+</script>
+</body>
+</html>
